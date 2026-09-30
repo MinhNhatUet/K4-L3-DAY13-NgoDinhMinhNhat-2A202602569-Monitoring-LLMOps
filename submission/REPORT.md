@@ -8,7 +8,7 @@
 - **MSSV:** 2A202602569
 - **Lớp:** K4-L3B
 - **Repository URL:** https://github.com/MinhNhatUet/K4-L3-DAY13-NgoDinhMinhNhat-2A202602569-Monitoring-LLMOps
-- **Commit SHA cuối:** `d996b494b71ed397990defa12aecdbf1abe6453a` là commit source/config cuối (ảnh 01 chạy test tại `0970f44`, code giống hệt, chỉ khác `submission/`); các commit sau chỉ cập nhật `submission/`. SHA nộp LMS là commit mới nhất trên `main`.
+- **Commit SHA cuối:** `9caa4d14f1006b2f2dadf306f645f47529eaaafe` là commit source/config cuối; các commit sau chỉ cập nhật `submission/` (report, ảnh). SHA nộp LMS là commit mới nhất trên `main`; ảnh 01 chạy `git log -1` + pytest trên commit đó.
 - **Challenge ID:** `day13-k4-l3b-monitoring-llmops-v1`
 - **Tên project Langfuse cá nhân:** `day13-k4-l3b-2A202602569`
 
