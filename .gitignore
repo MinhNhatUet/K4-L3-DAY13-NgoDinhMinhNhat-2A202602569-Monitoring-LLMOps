@@ -1,9 +1,11 @@
 .venv/
+.venv-dashboard/
 __pycache__/
 *.pyc
 .DS_Store
 data/logs.jsonl
 data/audit.jsonl
+data/cp2-api.log
 .env
 .pytest_cache/
 .antigravity/

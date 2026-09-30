@@ -1,0 +1,4 @@
+$ python -m pytest -q  (--basetemp: thư mục tạm ghi được, tránh PermissionError của %TEMP%)
+# run at 2026-09-30T04:31:01Z, after CP3 challenge (data/logs.jsonl = CP3 baseline + challenge + recovery)
+..............................                                           [100%]
+30 passed in 2.54s

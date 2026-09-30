@@ -7,7 +7,18 @@ primary_slo:
     total_event: 'event == "request_received"'
   target_percent: 99.5
   error_budget_percent: 0.5
-  note: Học viên phải giải thích hoặc điều chỉnh ngưỡng bằng baseline của mình. Ví dụ nếu có 10,000 request trong cửa sổ 28 ngày, error budget 0.5% nghĩa là tối đa 50 request được phép không đạt SLO.
+  note: >-
+    CP0 đo latency P95 152ms và TTFT P95 50ms trên 10 request fake LLM.
+    Giữ ngưỡng 3000ms để bao gồm retrieval và cold fetch prompt; baseline nhỏ
+    chỉ là tham chiếu lab, chưa đủ xác nhận SLO production. Mỗi correlation_id
+    tính một lần; lỗi hoặc request không hoàn tất trong 3000ms đều là bad event.
+    Đánh giá cửa sổ sau ít nhất 3000ms để request đang chạy không bị tính lỗi sớm.
+    Với 10000 request trong 28 ngày, floor(10000 * 0.005) = 50 request được
+    phép chậm hoặc lỗi; còn lại tối thiểu 9950 request tốt. Request vừa chậm
+    vừa lỗi chỉ trừ budget một lần. Không có traffic thì SLI là N/A.
+  example_total_requests: 10000
+  example_bad_requests_allowed: 50
+  example_good_requests_required: 9950
 guardrails:
   error_rate_pct_max: 2
   daily_cost_usd_max: 2.5

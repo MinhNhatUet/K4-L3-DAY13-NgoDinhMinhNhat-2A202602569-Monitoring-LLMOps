@@ -3,8 +3,11 @@ from __future__ import annotations
 import random
 import time
 from dataclasses import dataclass
+from datetime import datetime, timezone
+from typing import Any
 
 from .incidents import STATE
+from .tracing import get_langfuse_client, observe
 
 
 @dataclass
@@ -25,9 +28,13 @@ class FakeLLM:
     def __init__(self, model: str = "claude-sonnet-4-5") -> None:
         self.model = model
 
-    def generate(self, prompt: str) -> FakeResponse:
+    @observe(name="generation", as_type="generation", capture_input=False, capture_output=False)
+    def generate(self, prompt: str, *, managed_prompt: Any = None) -> FakeResponse:
+        client = get_langfuse_client()
+        client.update_current_generation(model=self.model, prompt=managed_prompt)
         started = time.perf_counter()
         time.sleep(0.05)  # mô phỏng thời điểm token đầu tiên sẵn sàng
+        completion_start_time = datetime.now(timezone.utc)
         ttft_ms = int((time.perf_counter() - started) * 1000)
         time.sleep(0.10)
         input_tokens = max(20, len(prompt) // 4)
@@ -37,6 +44,15 @@ class FakeLLM:
         answer = (
             "Starter answer. You should improve this output logic and add better quality checks. "
             "Use retrieved context and keep responses concise."
+        )
+        client.update_current_generation(
+            completion_start_time=completion_start_time,
+            usage_details={"input": input_tokens, "output": output_tokens},
+            cost_details={
+                "input": input_tokens * 3 / 1_000_000,
+                "output": output_tokens * 15 / 1_000_000,
+                "total": round((input_tokens * 3 + output_tokens * 15) / 1_000_000, 6),
+            },
         )
         return FakeResponse(
             text=answer,
