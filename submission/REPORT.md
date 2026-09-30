@@ -8,7 +8,7 @@
 - **MSSV:** 2A202602569
 - **Lớp:** K4-L3B
 - **Repository URL:** https://github.com/MinhNhatUet/K4-L3-DAY13-NgoDinhMinhNhat-2A202602569-Monitoring-LLMOps
-- **Commit SHA cuối:** `d996b494b71ed397990defa12aecdbf1abe6453a` là commit source/config cuối (ảnh 01 chạy test tại `50e2e46`, chỉ khác report); các commit sau chỉ cập nhật `submission/`. SHA nộp LMS là commit mới nhất trên `main`.
+- **Commit SHA cuối:** `d996b494b71ed397990defa12aecdbf1abe6453a` là commit source/config cuối (ảnh 01 chạy test tại `0970f44`, code giống hệt, chỉ khác `submission/`); các commit sau chỉ cập nhật `submission/`. SHA nộp LMS là commit mới nhất trên `main`.
 - **Challenge ID:** `day13-k4-l3b-monitoring-llmops-v1`
 - **Tên project Langfuse cá nhân:** `day13-k4-l3b-2A202602569`
 
@@ -42,7 +42,7 @@ CP3 gồm baseline, challenge và hậu kiểm; log CP0–CP2 đã chuyển ra n
 |---|---|---|---|
 | `validate_logs.py` | 30/100 | 100/100 | Log mới sau khi chuyển log cũ ra ngoài và restart: 21 records, 10 unique IDs, 0 thiếu field/context, 0 PII leak ([02](evidence/02-log-validator.png)) |
 | `validate_dashboard.py` | 6/6 | 6/6 | Có dashboard runtime thật ([11](evidence/11-dashboard-overview.png), [12](evidence/12-incident-metric.png)) |
-| `pytest` | 22 passed | 30 passed in 2.50s | Thêm test PII, generation observability, dashboard runtime ([01](evidence/01-pytest.png)); chạy với `-p no:cacheprovider --basetemp` vì thư mục `%TEMP%\pytest-of-<user>` và `.pytest_cache` trên máy bị khóa quyền (PermissionError), không phải lỗi test |
+| `pytest` | 22 passed | 30 passed in 2.53s | Thêm test PII, generation observability, dashboard runtime ([01](evidence/01-pytest.png)) |
 | Số traces hợp lệ | 0 (key trống) | 173 trace trong project cá nhân (Past 1 day) | Mỗi trace có root + retrieval + generation, nối log bằng `correlation_id` ([06](evidence/06-trace-list.png)) |
 | Số PII leak | 0 theo validator | 0 | Trace không capture input/output thô; chỉ preview đã scrub |
 | Latency P95 / TTFT P95 | 152 ms / 50 ms | Bình thường 153 ms / 50 ms; lúc challenge 2666 ms / 50 ms | Xem mục 7 |
@@ -143,7 +143,7 @@ Trước khi có đề, đã practice `tool_fail` (error rate 100%, span retriev
 
 - **Một quyết định kỹ thuật quan trọng và lý do:** Không gửi input/output thô lên Langfuse (`capture_input/output=False`); trace chỉ mang metadata an toàn (`correlation_id`, model, feature, prompt name/label/version, token, cost) và preview đã qua `scrub_text`. Lý do: trace được lưu ở dịch vụ bên ngoài, còn người dùng có thể nhập email/SĐT/CCCD; PII scrubber trong logging không bảo vệ được dữ liệu đi qua SDK tracing. Đánh đổi: khi debug không xem được nguyên văn prompt, nên cần `correlation_id` để nối sang structured log (đã scrub) khi cần ngữ cảnh.
 - **Một lỗi/blocker đã gặp:** Khi điều tra CP3, gọi `GET /api/public/traces` để tìm trace theo `correlation_id` thì nhận HTTP 410 `LEGACY_API_UNAVAILABLE_FOR_NEW_ORGANIZATION`: project tạo sau 16/09/2026 không còn dùng được API cũ.
-- **Cách tìm nguyên nhân và xử lý:** Đọc thông báo lỗi (có gợi ý đường dẫn mới), chuyển sang `GET /api/public/v2/observations` với `fromStartTime`/`toStartTime` và `fields=core,basic,usage,prompt,metadata,model,trace_context`, lọc theo `metadata.correlation_id`, rồi gom theo `traceId`, cách `scripts/verify_cp2_cloud.py` đã dùng ở CP2. Blocker phụ: pytest báo `PermissionError` khi tạo `tmp_path` trong `%TEMP%`; xử lý bằng `--basetemp` trỏ tới thư mục ghi được, sau đó 30/30 test pass (không phải lỗi code).
+- **Cách tìm nguyên nhân và xử lý:** Đọc thông báo lỗi (có gợi ý đường dẫn mới), chuyển sang `GET /api/public/v2/observations` với `fromStartTime`/`toStartTime` và `fields=core,basic,usage,prompt,metadata,model,trace_context`, lọc theo `metadata.correlation_id`, rồi gom theo `traceId`, cách `scripts/verify_cp2_cloud.py` đã dùng ở CP2. Blocker phụ: pytest báo `PermissionError` khi tạo `tmp_path` trong `%TEMP%`; nguyên nhân là thư mục `%TEMP%\pytest-of-<user>` và `.pytest_cache` bị khóa quyền (tạo bởi một tiến trình khác). Xác nhận bằng `--basetemp` sang thư mục khác thì 30/30 pass (không phải lỗi code), sau đó xóa hai thư mục bằng quyền admin và `python -m pytest -q` trơn chạy lại 30 passed.
 - **Cách hiểu luồng Metrics → Logs → Traces:** Metrics trả lời "có vấn đề gì, từ lúc nào": P50 tăng từ 152 lên 2653 ms lúc 04:27:45–55 UTC, trong khi error, token, cost không đổi. Logs trả lời "request nào": lọc cửa sổ đó, chọn `req-4adc1999` với `latency_ms=2669`. Traces trả lời "bước nào": cùng `correlation_id`, span `retrieval` chiếm 2.50/2.67 s còn `generation` chỉ 0.17 s. Mỗi tầng thu hẹp phạm vi cho tầng sau; bắt đầu từ trace ngẫu nhiên sẽ không biết trace đó có đại diện cho sự cố hay không.
 - **Vai trò của prompt version, token/cost, SLO hoặc rollback trong vận hành LLM:** Prompt là một phần của "code" chạy production: đổi prompt có thể làm thay đổi token, cost, latency và quality mà không cần deploy. Gắn `prompt_name/label/version` vào mọi trace giúp so sánh v1 và v2 trên cùng input, và rollback chỉ cần chuyển label `production` về v1 thay vì deploy lại. Token/cost là metric riêng của LLM vì hóa đơn tăng theo độ dài output. SLO 99.5% (≤ 3000 ms) cho error budget 50/10 000 request; sự cố challenge cho thấy ngưỡng tuyệt đối 3000 ms còn lỏng, vì latency tăng 17 lần vẫn chưa vượt SLO.
 - **Điều quan trọng nhất đã học:** Một chỉ số không đổi cũng là bằng chứng. TTFT giữ 50 ms và generation giữ khoảng 0.15 s giúp loại LLM khỏi danh sách nghi vấn trước khi mở trace. Thời gian phía client có thể gây hiểu nhầm (8–13 s do xếp hàng), nên phải dựa vào `latency_ms` phía server và span.
@@ -158,4 +158,4 @@ Trước khi có đề, đã practice `tool_fail` (error rate 100%, span retriev
 - [x] Trace/prompt evidence thuộc project Langfuse cá nhân và ảnh không lộ key/secret.
 - [x] Repository chạy lại được theo README.
 - [x] Không có secret, API key, PII thô hoặc evidence của người khác/lớp khác.
-- [ ] URL repo và commit SHA cuối đã được nộp trên LMS/Codelabs.
+- [x] URL repo và commit SHA cuối đã được nộp trên LMS/Codelabs.
